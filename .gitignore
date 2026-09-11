@@ -1,0 +1,19 @@
+# Python / Django
+__pycache__/
+*.pyc
+backend/db.sqlite3
+backend/staticfiles/
+backend/.env
+*.sqlite3
+
+# Node (if you ever add tooling)
+node_modules/
+
+# Editors / OS
+.DS_Store
+.vscode/
+.idea/
+
+# Env files
+.env
+.env.local

@@ -1,0 +1,14 @@
+# Netlify site configuration -- this is a plain static site (no build
+# tooling required), so the "build" is just pointing Netlify at the
+# frontend folder.
+
+[build]
+  publish = "frontend"
+  command = "echo 'Static site - no build step required'"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
