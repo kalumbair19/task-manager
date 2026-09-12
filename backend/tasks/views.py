@@ -100,30 +100,37 @@ def kpi_summary(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def important_dates(request):
-    """Tasks with a start or due date, for a calendar / upcoming-dates view."""
+    """What's actually coming up: tasks due or starting in the next 60 days,
+    plus anything overdue (however old) -- not every dated task ever, which
+    is what this used to return regardless of how far in the past or future
+    it was."""
     today = timezone.localdate()
-    horizon = today + timedelta(days=180)
+    horizon = today + timedelta(days=60)
     qs = Task.objects.filter(is_archived=False).exclude(
         due_date__isnull=True, start_date__isnull=True
     )
     events = []
     for t in qs:
         if t.due_date:
-            events.append({
-                "task_id": t.id,
-                "description": t.description,
-                "date": t.due_date,
-                "type": "due",
-                "status": t.status,
-                "priority": t.priority,
-                "assigned_to": t.assigned_to,
-            })
-        if t.start_date:
+            overdue = t.status in Task.ACTIONABLE_STATUSES and t.due_date < today
+            if overdue or today <= t.due_date <= horizon:
+                events.append({
+                    "task_id": t.id,
+                    "description": t.description,
+                    "date": t.due_date,
+                    "type": "due",
+                    "overdue": overdue,
+                    "status": t.status,
+                    "priority": t.priority,
+                    "assigned_to": t.assigned_to,
+                })
+        if t.start_date and today <= t.start_date <= horizon:
             events.append({
                 "task_id": t.id,
                 "description": t.description,
                 "date": t.start_date,
                 "type": "start",
+                "overdue": False,
                 "status": t.status,
                 "priority": t.priority,
                 "assigned_to": t.assigned_to,
