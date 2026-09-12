@@ -82,6 +82,44 @@ async function request(path, { method = "GET", body, auth = true } = {}) {
   return data;
 }
 
+async function downloadFile(path) {
+  const headers = {};
+  const token = getToken();
+  if (token) headers["Authorization"] = `Token ${token}`;
+
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, { headers });
+  } catch (networkErr) {
+    throw new ApiError(
+      "Could not reach the server. Check that the API is running and reachable.",
+      0,
+      null
+    );
+  }
+
+  if (response.status === 401) {
+    clearSession();
+    throw new ApiError("Session expired. Please log in again.", 401, null);
+  }
+  if (!response.ok) {
+    let detail = `Request failed with status ${response.status}`;
+    try {
+      const data = await response.json();
+      detail = data.detail || detail;
+    } catch {
+      // ignore -- not JSON
+    }
+    throw new ApiError(detail, response.status, null);
+  }
+
+  const disposition = response.headers.get("Content-Disposition") || "";
+  const match = disposition.match(/filename="?([^"]+)"?/);
+  const filename = match ? match[1] : "report.docx";
+  const blob = await response.blob();
+  return { blob, filename };
+}
+
 export const api = {
   login: (username, password) =>
     request("/auth/login/", { method: "POST", body: { username, password }, auth: false }),
@@ -93,6 +131,16 @@ export const api = {
   monthlyReport: (year, month) => request(`/reports/monthly/?year=${year}&month=${month}`),
 
   weeklyReport: (isoDate) => request(`/reports/weekly/?date=${isoDate}`),
+
+  downloadWeeklyReportDocx: (isoDate, mitigatingAction) =>
+    downloadFile(
+      `/reports/weekly/download/?date=${isoDate}&mitigating_action=${encodeURIComponent(mitigatingAction || "")}`
+    ),
+
+  downloadMonthlyReportDocx: (year, month, mitigatingAction) =>
+    downloadFile(
+      `/reports/monthly/download/?year=${year}&month=${month}&mitigating_action=${encodeURIComponent(mitigatingAction || "")}`
+    ),
 
   getDeliverableTally: (reportType) => request(`/reports/deliverable-tally/${reportType}/`),
 

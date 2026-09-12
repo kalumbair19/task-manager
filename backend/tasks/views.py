@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 
 from django.contrib.auth import authenticate
+from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import status as http_status
 from rest_framework import viewsets, filters
@@ -10,7 +11,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 
-from . import reports
+from . import docx_report, reports
 from .models import DeliverableTally, Task
 from .serializers import TaskSerializer
 
@@ -168,6 +169,62 @@ def monthly_report(request):
 
     data = reports.build_monthly_report(year, month, deliverable_previous=_get_deliverable_previous("monthly"))
     return Response(data)
+
+
+def _docx_response(buffer, filename):
+    response = HttpResponse(
+        buffer.read(),
+        content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def weekly_report_docx(request):
+    """Same data as weekly_report, rendered into the real Word template
+    (the same one the legacy VBA macro wrote into) and returned as a
+    downloadable .docx. ?mitigating_action= lets the client pass along
+    whatever it currently has in the editable textarea, since that field
+    isn't persisted server-side."""
+    date_param = request.query_params.get("date")
+    try:
+        anchor = date.fromisoformat(date_param) if date_param else timezone.localdate()
+    except ValueError:
+        return Response({"detail": "date must be in YYYY-MM-DD format."}, status=400)
+
+    data = reports.build_weekly_report(anchor, deliverable_previous=_get_deliverable_previous("weekly"))
+    mitigating_action = request.query_params.get("mitigating_action")
+    if mitigating_action:
+        data["mitigating_action"] = mitigating_action
+
+    buffer = docx_report.render_report_docx(data, "weekly")
+    filename = f"PMS-406 sUSV Weekly Report {data['week_start']} to {data['week_end']}.docx"
+    return _docx_response(buffer, filename)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def monthly_report_docx(request):
+    """Same data as monthly_report, rendered into the real Word template
+    and returned as a downloadable .docx."""
+    try:
+        year = int(request.query_params.get("year", timezone.localdate().year))
+        month = int(request.query_params.get("month", timezone.localdate().month))
+    except (TypeError, ValueError):
+        return Response({"detail": "year and month must be integers."}, status=400)
+    if not (1 <= month <= 12):
+        return Response({"detail": "month must be between 1 and 12."}, status=400)
+
+    data = reports.build_monthly_report(year, month, deliverable_previous=_get_deliverable_previous("monthly"))
+    mitigating_action = request.query_params.get("mitigating_action")
+    if mitigating_action:
+        data["mitigating_action"] = mitigating_action
+
+    buffer = docx_report.render_report_docx(data, "monthly")
+    filename = f"PMS-406 sUSV Monthly Report {year}-{month:02d}.docx"
+    return _docx_response(buffer, filename)
 
 
 @api_view(["GET", "PUT"])

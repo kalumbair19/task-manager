@@ -31,6 +31,7 @@ export async function renderReport(root) {
         <h1>Status Report</h1>
         <p>Generate the Weekly or Monthly PMS-406 sUSV status report.</p>
       </div>
+      <button class="btn btn-secondary" id="download-docx-btn">&#128196; Download as Word</button>
       <button class="btn btn-secondary" id="print-btn">&#128424;&#65039; Print / Save as PDF</button>
     </div>
 
@@ -46,6 +47,37 @@ export async function renderReport(root) {
   `;
 
   root.querySelector("#print-btn").addEventListener("click", () => window.print());
+
+  root.querySelector("#download-docx-btn").addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = "Preparing…";
+    try {
+      const mitigatingBox = root.querySelector("#mitigating-action-input");
+      const mitigatingAction = mitigatingBox ? mitigatingBox.value : state.mitigatingAction;
+      const { blob, filename } =
+        state.type === "weekly"
+          ? await api.downloadWeeklyReportDocx(state.weekAnchor, mitigatingAction)
+          : await api.downloadMonthlyReportDocx(state.year, state.month, mitigatingAction);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      root.querySelector("#report-output").insertAdjacentHTML(
+        "afterbegin",
+        `<div class="error-banner">${escapeHtml(err.message)}</div>`
+      );
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = original;
+    }
+  });
 
   const toggleBtns = root.querySelectorAll(".toggle-btn");
   toggleBtns.forEach((btn) => {
