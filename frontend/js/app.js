@@ -11,7 +11,7 @@ const NAV_ITEMS = [
   { path: "/dashboard", label: "Dashboard", icon: "&#9673;" },
   { path: "/tasks", label: "Tasks", icon: "&#9776;" },
   { path: "/dates", label: "Important Dates", icon: "&#128197;" },
-  { path: "/report", label: "Monthly Report", icon: "&#128202;" },
+  { path: "/report", label: "Status Report", icon: "&#128202;" },
   { path: "/archive", label: "Archive", icon: "&#128451;" },
 ];
 

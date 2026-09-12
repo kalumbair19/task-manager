@@ -1,4 +1,3 @@
-import calendar
 from datetime import date, timedelta
 
 from django.contrib.auth import authenticate
@@ -11,7 +10,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 
-from .models import Task
+from . import reports
+from .models import DeliverableTally, Task
 from .serializers import TaskSerializer
 
 
@@ -131,12 +131,32 @@ def important_dates(request):
     return Response(events)
 
 
+def _get_deliverable_previous(report_type):
+    tally, _ = DeliverableTally.objects.get_or_create(report_type=report_type)
+    return tally.previous_count
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def weekly_report(request):
+    """Weekly Status Report -- the web equivalent of the workbook's
+    CreateWeeklyReport macro. Pass ?date=YYYY-MM-DD for any day inside the
+    desired week; defaults to today."""
+    date_param = request.query_params.get("date")
+    try:
+        anchor = date.fromisoformat(date_param) if date_param else timezone.localdate()
+    except ValueError:
+        return Response({"detail": "date must be in YYYY-MM-DD format."}, status=400)
+
+    data = reports.build_weekly_report(anchor, deliverable_previous=_get_deliverable_previous("weekly"))
+    return Response(data)
+
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def monthly_report(request):
-    """Monthly Status Report: everything completed / touched / due in a
-    given month, plus a KPI snapshot -- the web equivalent of the
-    workbook's 'Monthly Report' macro button."""
+    """Monthly Status Report -- the web equivalent of the workbook's
+    CreateMonthlyReport macro."""
     try:
         year = int(request.query_params.get("year", timezone.localdate().year))
         month = int(request.query_params.get("month", timezone.localdate().month))
@@ -146,52 +166,26 @@ def monthly_report(request):
     if not (1 <= month <= 12):
         return Response({"detail": "month must be between 1 and 12."}, status=400)
 
-    first_day = date(year, month, 1)
-    last_day = date(year, month, calendar.monthrange(year, month)[1])
+    data = reports.build_monthly_report(year, month, deliverable_previous=_get_deliverable_previous("monthly"))
+    return Response(data)
 
-    all_tasks = Task.objects.all()
 
-    completed_this_month = all_tasks.filter(
-        date_completed__gte=first_day, date_completed__lte=last_day
-    ).order_by("date_completed")
+@api_view(["GET", "PUT"])
+@permission_classes([IsAuthenticated])
+def deliverable_tally(request, report_type):
+    if report_type not in ("weekly", "monthly"):
+        return Response({"detail": "report_type must be 'weekly' or 'monthly'."}, status=404)
 
-    in_progress = all_tasks.filter(
-        is_archived=False, status=Task.Status.IN_PROGRESS
-    ).order_by("due_date")
+    tally, _ = DeliverableTally.objects.get_or_create(report_type=report_type)
 
-    started_this_month = all_tasks.filter(
-        start_date__gte=first_day, start_date__lte=last_day
-    ).order_by("start_date")
+    if request.method == "PUT":
+        try:
+            value = int(request.data.get("previous_count"))
+        except (TypeError, ValueError):
+            return Response({"detail": "previous_count must be an integer."}, status=400)
+        if value < 0:
+            return Response({"detail": "previous_count cannot be negative."}, status=400)
+        tally.previous_count = value
+        tally.save(update_fields=["previous_count"])
 
-    due_this_month = all_tasks.filter(
-        due_date__gte=first_day, due_date__lte=last_day
-    ).exclude(status=Task.Status.COMPLETE).order_by("due_date")
-
-    overdue_still_open = [
-        t for t in all_tasks.filter(
-            is_archived=False, status__in=Task.ACTIONABLE_STATUSES
-        ).exclude(due_date__isnull=True)
-        if t.due_date < first_day
-    ]
-
-    return Response({
-        "period": {
-            "year": year,
-            "month": month,
-            "label": first_day.strftime("%B %Y"),
-            "start": first_day,
-            "end": last_day,
-        },
-        "summary": {
-            "completed_count": completed_this_month.count(),
-            "started_count": started_this_month.count(),
-            "in_progress_count": in_progress.count(),
-            "due_this_month_count": due_this_month.count(),
-            "overdue_count": len(overdue_still_open),
-        },
-        "completed_this_month": TaskSerializer(completed_this_month, many=True).data,
-        "started_this_month": TaskSerializer(started_this_month, many=True).data,
-        "in_progress": TaskSerializer(in_progress, many=True).data,
-        "due_this_month": TaskSerializer(due_this_month, many=True).data,
-        "overdue_still_open": TaskSerializer(overdue_still_open, many=True).data,
-    })
+    return Response({"report_type": tally.report_type, "previous_count": tally.previous_count})

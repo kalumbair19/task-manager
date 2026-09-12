@@ -71,3 +71,22 @@ class Task(models.Model):
         if self.status == self.Status.COMPLETE and not self.date_completed:
             self.date_completed = timezone.localdate()
         super().save(*args, **kwargs)
+
+
+class DeliverableTally(models.Model):
+    """Tracks the 'Previously Reported' deliverable count for the Weekly and
+    Monthly status reports. The original macro never computed this (it was
+    a stale, manually-typed number in the Word template) -- here it's a
+    small persisted value the user can update, and the report's 'Cumulative'
+    figure is simply previous + this period's auto-counted deliverables."""
+
+    class ReportType(models.TextChoices):
+        WEEKLY = "weekly", "Weekly"
+        MONTHLY = "monthly", "Monthly"
+
+    report_type = models.CharField(max_length=10, choices=ReportType.choices, unique=True)
+    previous_count = models.PositiveIntegerField(default=0)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.report_type}: {self.previous_count}"

@@ -382,11 +382,57 @@ input:focus, select:focus, textarea:focus {
 .report-item:last-child { border-bottom: none; }
 .report-meta { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
 
+.report-type-toggle { display: flex; gap: 8px; margin-bottom: 14px; }
+.toggle-btn {
+  padding: 9px 18px; border-radius: 999px; border: 1px solid var(--border);
+  background: #fff; color: var(--text-muted); font-weight: 700; font-size: 0.85rem; cursor: pointer;
+}
+.toggle-btn.active { background: var(--navy); border-color: var(--navy); color: #fff; }
+
+.report-doc { max-width: 900px; margin: 0 auto; }
+.report-doc-header { margin-bottom: 18px; }
+.report-doc-kicker { text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; }
+.report-doc-title { margin: 2px 0 0; color: var(--navy); }
+
+.report-meta-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px;
+  background: #f8faff; border-radius: 10px; padding: 14px 18px; margin-bottom: 26px;
+  font-size: 0.88rem;
+}
+.report-meta-label { font-weight: 700; color: var(--navy); margin-right: 4px; }
+
+.report-line { font-size: 0.9rem; line-height: 1.6; white-space: pre-wrap; }
+.report-subheading { font-weight: 700; margin: 10px 0 4px; font-size: 0.88rem; }
+.report-indent { margin-left: 18px; }
+
+.deliverables-counts {
+  display: flex; flex-wrap: wrap; gap: 18px; align-items: center;
+  font-size: 0.85rem; margin-bottom: 12px; color: var(--text-muted);
+}
+.deliverables-counts input[type="number"] {
+  width: 70px; margin-left: 6px; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--border);
+}
+
+.report-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 8px; }
+.report-table th, .report-table td {
+  border: 1px solid var(--border); padding: 8px 10px; text-align: left; vertical-align: top;
+}
+.report-table th { background: #f4f6fb; }
+
+.report-textarea {
+  width: 100%; font-family: inherit; font-size: 0.9rem; padding: 8px 10px;
+  border-radius: 8px; border: 1px solid var(--border); resize: vertical;
+}
+
+.print-only { display: none; }
+
 @media print {
   .sidebar, .no-print { display: none !important; }
+  .print-only { display: block; }
   .main { padding: 0; }
   body { background: #fff; }
   .panel { box-shadow: none; }
+  .report-section { break-inside: avoid; }
 }
 
 /* ---------- Calendar / dates list ---------- */

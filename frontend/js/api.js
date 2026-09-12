@@ -92,6 +92,16 @@ export const api = {
 
   monthlyReport: (year, month) => request(`/reports/monthly/?year=${year}&month=${month}`),
 
+  weeklyReport: (isoDate) => request(`/reports/weekly/?date=${isoDate}`),
+
+  getDeliverableTally: (reportType) => request(`/reports/deliverable-tally/${reportType}/`),
+
+  setDeliverableTally: (reportType, previousCount) =>
+    request(`/reports/deliverable-tally/${reportType}/`, {
+      method: "PUT",
+      body: { previous_count: previousCount },
+    }),
+
   listTasks: (params = {}) => {
     const qs = new URLSearchParams(params).toString();
     return request(`/tasks/${qs ? `?${qs}` : ""}`);
