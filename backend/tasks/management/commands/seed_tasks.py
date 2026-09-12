@@ -60,6 +60,9 @@ class Command(BaseCommand):
         if options["wipe"]:
             deleted, _ = Task.objects.all().delete()
             self.stdout.write(f"Deleted {deleted} existing task(s).")
+        elif Task.objects.exists():
+            self.stdout.write("Tasks already exist -- skipping seed (use --wipe to reload).")
+            return
 
         data = json.loads(DATA_FILE.read_text())
         created = 0
