@@ -1,5 +1,6 @@
 import { api } from "../api.js";
 import { formatDate, statusBadge, priorityBadge, debounce } from "../utils.js";
+import { confirmAction } from "../components/confirmModal.js";
 
 export async function renderArchive(root) {
   root.innerHTML = `
@@ -48,7 +49,7 @@ function renderTable(container, tasks, reload) {
       <thead>
         <tr>
           <th>#</th><th>Task</th><th>Priority</th><th>Assigned To</th>
-          <th>Completed</th><th>Status</th><th></th>
+          <th>Completed</th><th>Status</th><th>Notes</th><th></th>
         </tr>
       </thead>
       <tbody>
@@ -57,14 +58,12 @@ function renderTable(container, tasks, reload) {
             (t) => `
           <tr>
             <td>${t.task_no ?? "—"}</td>
-            <td>
-              <div class="task-desc">${t.description}</div>
-              ${t.notes ? `<div class="task-notes">${t.notes}</div>` : ""}
-            </td>
+            <td><div class="task-desc">${t.description}</div></td>
             <td>${priorityBadge(t.priority)}</td>
             <td>${t.assigned_to || "—"}</td>
             <td>${formatDate(t.date_completed)}</td>
             <td>${statusBadge(t.status)}</td>
+            <td><div class="task-notes-col">${t.notes || "—"}</div></td>
             <td>
               <div class="row-actions">
                 <button class="btn btn-secondary btn-sm unarchive-btn" data-id="${t.id}">Restore</button>
@@ -78,8 +77,17 @@ function renderTable(container, tasks, reload) {
     </table>
   `;
 
+  const findTask = (id) => tasks.find((t) => String(t.id) === String(id));
+
   container.querySelectorAll(".unarchive-btn").forEach((btn) => {
     btn.addEventListener("click", async () => {
+      const task = findTask(btn.dataset.id);
+      const ok = await confirmAction({
+        title: "Restore this task?",
+        message: `"${task?.description || "This task"}" will move back to your active Tasks list.`,
+        confirmLabel: "Restore Task",
+      });
+      if (!ok) return;
       try {
         await api.unarchiveTask(btn.dataset.id);
         reload();
@@ -91,7 +99,14 @@ function renderTable(container, tasks, reload) {
 
   container.querySelectorAll(".delete-btn").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      if (!confirm("Permanently delete this archived task?")) return;
+      const task = findTask(btn.dataset.id);
+      const ok = await confirmAction({
+        title: "Delete this task?",
+        message: `"${task?.description || "This task"}" will be permanently deleted and cannot be recovered.`,
+        confirmLabel: "Delete Task",
+        danger: true,
+      });
+      if (!ok) return;
       try {
         await api.deleteTask(btn.dataset.id);
         reload();

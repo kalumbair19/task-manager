@@ -1,6 +1,7 @@
 import { api } from "../api.js";
 import { formatDate, statusBadge, priorityBadge, STATUS_OPTIONS, debounce } from "../utils.js";
 import { openTaskModal } from "../components/taskModal.js";
+import { confirmAction } from "../components/confirmModal.js";
 
 let currentFilters = { status: "", priority: "", search: "" };
 
@@ -98,6 +99,7 @@ function renderTable(container, tasks, reload) {
           <th>Start</th>
           <th>Due</th>
           <th>Status</th>
+          <th>Notes</th>
           <th></th>
         </tr>
       </thead>
@@ -107,10 +109,7 @@ function renderTable(container, tasks, reload) {
             (t) => `
           <tr data-id="${t.id}">
             <td>${t.task_no ?? "—"}</td>
-            <td>
-              <div class="task-desc">${t.description}</div>
-              ${t.notes ? `<div class="task-notes">${t.notes}</div>` : ""}
-            </td>
+            <td><div class="task-desc">${t.description}</div></td>
             <td>${priorityBadge(t.priority)}</td>
             <td>${t.assigned_to || "—"}</td>
             <td>${formatDate(t.start_date)}</td>
@@ -122,6 +121,7 @@ function renderTable(container, tasks, reload) {
                 ).join("")}
               </select>
             </td>
+            <td><div class="task-notes-col">${t.notes || "—"}</div></td>
             <td>
               <div class="row-actions">
                 <button class="btn btn-secondary btn-sm edit-btn" data-id="${t.id}">Edit</button>
@@ -158,6 +158,13 @@ function renderTable(container, tasks, reload) {
 
   container.querySelectorAll(".archive-btn").forEach((btn) => {
     btn.addEventListener("click", async () => {
+      const task = findTask(btn.dataset.id);
+      const ok = await confirmAction({
+        title: "Archive this task?",
+        message: `"${task?.description || "This task"}" will move to the Archive. You can restore it from there at any time.`,
+        confirmLabel: "Archive Task",
+      });
+      if (!ok) return;
       try {
         await api.archiveTask(btn.dataset.id);
         reload();
@@ -169,7 +176,14 @@ function renderTable(container, tasks, reload) {
 
   container.querySelectorAll(".delete-btn").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      if (!confirm("Delete this task permanently? This cannot be undone.")) return;
+      const task = findTask(btn.dataset.id);
+      const ok = await confirmAction({
+        title: "Delete this task?",
+        message: `"${task?.description || "This task"}" will be permanently deleted and cannot be recovered.`,
+        confirmLabel: "Delete Task",
+        danger: true,
+      });
+      if (!ok) return;
       try {
         await api.deleteTask(btn.dataset.id);
         reload();

@@ -70,6 +70,12 @@ class Task(models.Model):
         # macros did, so the API behaves the same as the sheet.
         if self.status == self.Status.COMPLETE and not self.date_completed:
             self.date_completed = timezone.localdate()
+        # New tasks created here (as opposed to imported from the workbook,
+        # which supplies its own task_no) get the next sequential number
+        # automatically, the way adding a row to the sheet used to.
+        if self.pk is None and self.task_no is None:
+            highest = Task.objects.aggregate(models.Max("task_no"))["task_no__max"] or 0
+            self.task_no = highest + 1
         super().save(*args, **kwargs)
 
 

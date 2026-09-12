@@ -280,6 +280,9 @@ tbody td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align
 tbody tr:hover { background: #f8faff; }
 .task-desc { font-weight: 600; color: var(--navy); }
 .task-notes { color: var(--text-muted); font-size: 0.82rem; margin-top: 3px; max-width: 320px; }
+.task-notes-col { color: var(--text-muted); font-size: 0.85rem; max-width: 260px; white-space: pre-wrap; }
+.modal-sm { max-width: 420px; }
+.modal-sm p { color: var(--text-muted); line-height: 1.5; }
 .row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 
 .table-wrap { overflow-x: auto; }
